@@ -1,0 +1,1003 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ZEROVA — PDF Suite</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #F6F6F4; --card: #FFFFFF; --border: #E3E3DE;
+      --text: #111111; --muted: #8A8A82; --accent: #2E54C8;
+      --accent-bg: #EEF2FF; --success-bg: #EDFAF3; --success: #1A7F4B;
+      --error-bg: #FEF1F1; --error: #C22B2B; --radius: 12px;
+    }
+    body { font-family: 'Outfit', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+    nav {
+      padding: 14px 32px; display: flex; align-items: center;
+      justify-content: space-between; border-bottom: 1px solid var(--border);
+      background: var(--card); position: sticky; top: 0; z-index: 200; gap: 10px;
+    }
+    .logo { font-family: 'Space Mono', monospace; font-size: 15px; font-weight: 700; letter-spacing: 3px; cursor: pointer; }
+    .logo span { color: var(--accent); }
+    .nav-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+    .privacy-badge { font-size: 11px; background: var(--accent-bg); color: var(--accent);
+      padding: 5px 11px; border-radius: 100px; font-weight: 500; white-space: nowrap; }
+    .linkedin-btn {
+      display: inline-flex; align-items: center; gap: 5px; background: #0A66C2; color: #fff;
+      border: none; padding: 6px 13px; border-radius: 100px; font-family: 'Outfit', sans-serif;
+      font-size: 12px; font-weight: 600; cursor: pointer; text-decoration: none; white-space: nowrap;
+      transition: background 0.15s;
+    }
+    .linkedin-btn:hover { background: #0852a0; }
+
+    .view { display: none; }
+    .view.active { display: block; }
+
+    .hero { text-align: center; padding: 52px 32px 32px; }
+    .hero h1 { font-family: 'Space Mono', monospace; font-size: 40px; letter-spacing: 8px; font-weight: 700; margin-bottom: 12px; }
+    .hero h1 span { color: var(--accent); }
+    .hero p { color: var(--muted); font-size: 14px; max-width: 380px; margin: 0 auto; line-height: 1.6; }
+
+    .tools-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 10px; padding: 10px 32px 56px; max-width: 1060px; margin: 0 auto; }
+    .tool-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 20px 18px; cursor: pointer; transition: border-color 0.15s, transform 0.15s, box-shadow 0.15s; }
+    .tool-card:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: 0 6px 24px rgba(46,84,200,0.08); }
+    .tool-icon { font-size: 20px; margin-bottom: 8px; }
+    .tool-name { font-weight: 600; font-size: 13.5px; margin-bottom: 3px; }
+    .tool-desc { font-size: 12px; color: var(--muted); line-height: 1.45; }
+
+    .tool-view { max-width: 660px; margin: 0 auto; padding: 32px 32px 56px; }
+    .back-btn { background: none; border: 1px solid var(--border); padding: 6px 14px; border-radius: 8px;
+      cursor: pointer; font-family: 'Outfit', sans-serif; font-size: 13px; color: var(--muted);
+      margin-bottom: 24px; transition: all 0.12s; display: inline-flex; align-items: center; gap: 6px; }
+    .back-btn:hover { color: var(--text); border-color: var(--text); }
+    .tool-title { font-size: 24px; font-weight: 600; margin-bottom: 5px; }
+    .tool-subtitle { color: var(--muted); font-size: 13px; margin-bottom: 22px; line-height: 1.5; }
+
+    .dropzone { border: 2px dashed var(--border); border-radius: var(--radius); padding: 40px 20px;
+      text-align: center; cursor: pointer; transition: all 0.15s; background: var(--card); position: relative; }
+    .dropzone:hover, .dropzone.over { border-color: var(--accent); background: var(--accent-bg); }
+    .dropzone input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+    .dropzone-icon { font-size: 28px; margin-bottom: 8px; }
+    .dropzone-text { font-weight: 500; font-size: 14px; margin-bottom: 3px; }
+    .dropzone-sub { font-size: 12px; color: var(--muted); }
+
+    .file-list { margin: 10px 0; display: flex; flex-direction: column; gap: 6px; }
+    .file-item { background: var(--card); border: 1px solid var(--border); border-radius: 8px;
+      padding: 9px 13px; display: flex; align-items: center; gap: 9px; font-size: 13px; }
+    .file-item-icon { font-size: 15px; flex-shrink: 0; }
+    .file-item-name { flex: 1; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .file-item-size { color: var(--muted); font-size: 12px; flex-shrink: 0; }
+    .file-item-remove { cursor: pointer; color: var(--muted); background: none; border: none;
+      font-size: 13px; padding: 2px 4px; border-radius: 4px; transition: all 0.12s; }
+    .file-item-remove:hover { color: var(--error); background: var(--error-bg); }
+
+    .options { margin: 16px 0; display: flex; flex-direction: column; gap: 13px; }
+    .option-group { display: flex; flex-direction: column; gap: 5px; }
+    .option-label { font-size: 13px; font-weight: 500; }
+    .option-hint { font-size: 11px; color: var(--muted); }
+    input[type="text"], input[type="password"], input[type="number"], select {
+      padding: 9px 11px; border: 1px solid var(--border); border-radius: 8px;
+      font-family: 'Outfit', sans-serif; font-size: 13px; background: var(--card);
+      color: var(--text); outline: none; width: 100%; transition: border-color 0.12s; }
+    input:focus, select:focus { border-color: var(--accent); }
+    input[type="range"] { width: 100%; cursor: pointer; accent-color: var(--accent); }
+
+    .btn-process { background: var(--text); color: #fff; border: none; padding: 12px 26px;
+      border-radius: 10px; font-family: 'Outfit', sans-serif; font-size: 14px; font-weight: 600;
+      cursor: pointer; transition: background 0.15s; width: 100%; margin-top: 4px; }
+    .btn-process:hover { background: var(--accent); }
+    .btn-process:disabled { opacity: 0.45; cursor: not-allowed; }
+    .btn-secondary { background: var(--bg); color: var(--text); border: 1px solid var(--border);
+      padding: 7px 13px; border-radius: 8px; font-family: 'Outfit', sans-serif; font-size: 13px; cursor: pointer; transition: all 0.12s; }
+    .btn-secondary:hover { border-color: var(--text); }
+
+    .status { margin-top: 12px; padding: 11px 13px; border-radius: 8px; font-size: 13px;
+      font-weight: 500; display: none; line-height: 1.4; }
+    .status.loading { background: var(--accent-bg); color: var(--accent); display: block; }
+    .status.success { background: var(--success-bg); color: var(--success); display: block; }
+    .status.error   { background: var(--error-bg);   color: var(--error);   display: block; }
+
+    #sign-canvas { border: 1px solid var(--border); border-radius: 8px; cursor: crosshair;
+      background: #fff; display: block; width: 100%; touch-action: none; }
+    .sign-controls { display: flex; gap: 8px; margin-top: 7px; }
+
+    .thumbnails-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(88px,1fr)); gap: 8px; margin: 13px 0; }
+    .thumb-item { background: var(--card); border: 2px solid var(--border); border-radius: 8px;
+      padding: 5px; cursor: grab; text-align: center; transition: border-color 0.12s; user-select: none; }
+    .thumb-item:active { cursor: grabbing; }
+    .thumb-item.dragging { opacity: 0.35; }
+    .thumb-item.drag-over { border-color: var(--accent); background: var(--accent-bg); }
+    .thumb-item canvas { width: 100%; height: auto; display: block; border-radius: 4px; }
+    .thumb-num { font-size: 10px; color: var(--muted); margin-top: 3px; font-family: 'Space Mono', monospace; }
+
+    /* ROTATE interactive */
+    .rotate-thumbs { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px,1fr)); gap: 10px; margin: 14px 0; }
+    .rot-item { background: var(--card); border: 2px solid var(--border); border-radius: 8px; padding: 7px; text-align: center; user-select: none; }
+    .rot-canvas-wrap { display: flex; align-items: center; justify-content: center; min-height: 60px; overflow: hidden; }
+    .rot-item canvas { display: block; max-width: 100%; max-height: 90px; transition: transform 0.25s ease; border-radius: 3px; }
+    .rot-controls { display: flex; justify-content: center; gap: 4px; margin-top: 6px; }
+    .rot-btn { background: var(--bg); border: 1px solid var(--border); border-radius: 5px;
+      cursor: pointer; font-size: 14px; padding: 3px 8px; transition: all 0.12s; }
+    .rot-btn:hover { background: var(--accent-bg); border-color: var(--accent); }
+    .rot-label { font-size: 10px; color: var(--muted); margin-top: 3px; font-family: 'Space Mono', monospace; }
+    .rotate-quick { display: none; gap: 8px; flex-wrap: wrap; margin: 10px 0; }
+
+    /* slider */
+    .slider-row { display: flex; align-items: center; gap: 10px; }
+    .slider-row input[type="range"] { flex: 1; }
+    .slider-val { font-size: 13px; font-weight: 600; color: var(--accent); min-width: 40px; text-align: right; font-family: 'Space Mono', monospace; }
+
+    @media (max-width: 600px) {
+      nav { padding: 12px 16px; }
+      .hero { padding: 30px 16px 18px; }
+      .hero h1 { font-size: 28px; letter-spacing: 4px; }
+      .tools-grid { padding: 8px 12px 36px; grid-template-columns: repeat(auto-fill, minmax(145px,1fr)); }
+      .tool-view { padding: 20px 16px 36px; }
+      .linkedin-btn .li-text { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <div class="logo" onclick="goHome()">ZERO<span>VA</span></div>
+  <div class="nav-right">
+    <div class="privacy-badge">🔒 Zero Upload</div>
+    <a class="linkedin-btn" href="https://www.linkedin.com/in/fiden-ahmed-0071062a2/" target="_blank" rel="noopener">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+      <span class="li-text">LinkedIn</span>
+    </a>
+  </div>
+</nav>
+
+<!-- HOME -->
+<div id="view-home" class="view active">
+  <div class="hero">
+    <h1>ZERO<span>VA</span></h1>
+    <p>PDF tools that never leave your device. Everything runs in your browser — no uploads, no servers, no tracking.</p>
+  </div>
+  <div class="tools-grid">
+    <div class="tool-card" onclick="openTool('merge')"><div class="tool-icon">📑</div><div class="tool-name">Merge PDF</div><div class="tool-desc">Combine multiple PDFs into one</div></div>
+    <div class="tool-card" onclick="openTool('split')"><div class="tool-icon">✂️</div><div class="tool-name">Split PDF</div><div class="tool-desc">Split into pages or custom ranges</div></div>
+    <div class="tool-card" onclick="openTool('rotate')"><div class="tool-icon">🔄</div><div class="tool-name">Rotate Pages</div><div class="tool-desc">Click ↺ ↻ on thumbnails to rotate each page</div></div>
+    <div class="tool-card" onclick="openTool('compress')"><div class="tool-icon">🗜️</div><div class="tool-name">Compress PDF</div><div class="tool-desc">Reduce file size with mode options</div></div>
+    <div class="tool-card" onclick="openTool('imgcompress')"><div class="tool-icon">📷</div><div class="tool-name">Compress Image</div><div class="tool-desc">Resize and reduce JPG/PNG with quality slider</div></div>
+    <div class="tool-card" onclick="openTool('img2pdf')"><div class="tool-icon">🖼️</div><div class="tool-name">Image → PDF</div><div class="tool-desc">Convert JPG/PNG to a PDF</div></div>
+    <div class="tool-card" onclick="openTool('pdf2img')"><div class="tool-icon">📸</div><div class="tool-name">PDF → Image</div><div class="tool-desc">Export every page as a PNG</div></div>
+    <div class="tool-card" onclick="openTool('watermark')"><div class="tool-icon">💧</div><div class="tool-name">Watermark</div><div class="tool-desc">Stamp text across every page</div></div>
+    <div class="tool-card" onclick="openTool('protect')"><div class="tool-icon">🔐</div><div class="tool-name">Protect PDF</div><div class="tool-desc">Lock your PDF with a password</div></div>
+    <div class="tool-card" onclick="openTool('sign')"><div class="tool-icon">✍️</div><div class="tool-name">Sign PDF</div><div class="tool-desc">Draw and embed your signature</div></div>
+    <div class="tool-card" onclick="openTool('reorder')"><div class="tool-icon">🗂️</div><div class="tool-name">Reorder Pages</div><div class="tool-desc">Drag thumbnails to rearrange pages</div></div>
+  </div>
+</div>
+
+<!-- MERGE -->
+<div id="view-merge" class="view"><div class="tool-view">
+  <button class="back-btn" onclick="goHome()">← Back</button>
+  <h2 class="tool-title">Merge PDFs</h2>
+  <p class="tool-subtitle">Add multiple PDFs — combined in the order listed below.</p>
+  <div class="dropzone" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event,'merge')">
+    <input type="file" multiple accept="application/pdf" onchange="handleFiles(event,'merge')">
+    <div class="dropzone-icon">📑</div><div class="dropzone-text">Drop PDF files here</div><div class="dropzone-sub">or click to browse</div>
+  </div>
+  <div class="file-list" id="merge-files"></div>
+  <button class="btn-process" onclick="runMerge()">Merge PDFs</button>
+  <div class="status" id="merge-status"></div>
+</div></div>
+
+<!-- SPLIT -->
+<div id="view-split" class="view"><div class="tool-view">
+  <button class="back-btn" onclick="goHome()">← Back</button>
+  <h2 class="tool-title">Split PDF</h2>
+  <p class="tool-subtitle">Split into individual pages or custom ranges.</p>
+  <div class="dropzone" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event,'split')">
+    <input type="file" accept="application/pdf" onchange="handleFiles(event,'split')">
+    <div class="dropzone-icon">✂️</div><div class="dropzone-text">Drop a PDF here</div><div class="dropzone-sub">or click to browse</div>
+  </div>
+  <div class="file-list" id="split-files"></div>
+  <div class="options">
+    <div class="option-group">
+      <label class="option-label">Split mode</label>
+      <select id="split-mode" onchange="toggleSplitRange()">
+        <option value="all">Every page as a separate PDF</option>
+        <option value="range">Custom page ranges</option>
+      </select>
+    </div>
+    <div class="option-group" id="split-range-group" style="display:none">
+      <label class="option-label">Page ranges</label>
+      <input type="text" id="split-ranges" placeholder="e.g. 1-3, 4-6, 7">
+      <div class="option-hint">Each range becomes a separate PDF. Pages start at 1.</div>
+    </div>
+  </div>
+  <button class="btn-process" onclick="runSplit()">Split PDF</button>
+  <div class="status" id="split-status"></div>
+</div></div>
+
+<!-- ROTATE -->
+<div id="view-rotate" class="view"><div class="tool-view">
+  <button class="back-btn" onclick="goHome()">← Back</button>
+  <h2 class="tool-title">Rotate Pages</h2>
+  <p class="tool-subtitle">Load a PDF — tap ↺ or ↻ on any page thumbnail to rotate it. Use the quick buttons to rotate all pages at once.</p>
+  <div class="dropzone" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event,'rotate')">
+    <input type="file" accept="application/pdf" onchange="handleFiles(event,'rotate')">
+    <div class="dropzone-icon">🔄</div><div class="dropzone-text">Drop a PDF here</div><div class="dropzone-sub">or click to browse</div>
+  </div>
+  <div class="file-list" id="rotate-files"></div>
+  <div class="rotate-quick" id="rotate-quick">
+    <button class="btn-secondary" onclick="rotateAll(90)">All +90°</button>
+    <button class="btn-secondary" onclick="rotateAll(180)">All 180°</button>
+    <button class="btn-secondary" onclick="rotateAll(270)">All −90°</button>
+    <button class="btn-secondary" onclick="rotateAll(0)">Reset All</button>
+  </div>
+  <div class="rotate-thumbs" id="rotate-thumbs"></div>
+  <button class="btn-process" id="rotate-save-btn" onclick="runRotate()" style="display:none">Save Rotated PDF</button>
+  <div class="status" id="rotate-status"></div>
+</div></div>
+
+<!-- COMPRESS PDF -->
+<div id="view-compress" class="view"><div class="tool-view">
+  <button class="back-btn" onclick="goHome()">← Back</button>
+  <h2 class="tool-title">Compress PDF</h2>
+  <p class="tool-subtitle">Removes redundant internal data. Works best on unoptimised PDFs. Image-heavy files may see limited savings.</p>
+  <div class="dropzone" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event,'compress')">
+    <input type="file" accept="application/pdf" onchange="handleFiles(event,'compress')">
+    <div class="dropzone-icon">🗜️</div><div class="dropzone-text">Drop a PDF here</div><div class="dropzone-sub">or click to browse</div>
+  </div>
+  <div class="file-list" id="compress-files"></div>
+  <div class="options">
+    <div class="option-group">
+      <label class="option-label">Compression mode</label>
+      <select id="compress-mode">
+        <option value="light">Light — fast, minimal change</option>
+        <option value="normal" selected>Normal — balanced (recommended)</option>
+        <option value="aggressive">Aggressive — strip metadata, maximum reduction</option>
+      </select>
+    </div>
+  </div>
+  <button class="btn-process" onclick="runCompress()">Compress PDF</button>
+  <div class="status" id="compress-status"></div>
+</div></div>
+
+<!-- COMPRESS IMAGE -->
+<div id="view-imgcompress" class="view"><div class="tool-view">
+  <button class="back-btn" onclick="goHome()">← Back</button>
+  <h2 class="tool-title">Compress Image</h2>
+  <p class="tool-subtitle">Reduce JPG or PNG file size. Adjust quality and optionally scale down dimensions. Output is JPEG.</p>
+  <div class="dropzone" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event,'imgcompress')">
+    <input type="file" multiple accept="image/jpeg,image/jpg,image/png" onchange="handleFiles(event,'imgcompress')">
+    <div class="dropzone-icon">📷</div><div class="dropzone-text">Drop images here</div><div class="dropzone-sub">JPG or PNG — multiple files allowed</div>
+  </div>
+  <div class="file-list" id="imgcompress-files"></div>
+  <div class="options">
+    <div class="option-group">
+      <label class="option-label">Quality</label>
+      <div class="slider-row">
+        <input type="range" id="imgcompress-quality" min="10" max="95" value="72"
+          oninput="document.getElementById('imgcompress-qval').textContent=this.value+'%'">
+        <span class="slider-val" id="imgcompress-qval">72%</span>
+      </div>
+      <div class="option-hint">72% is a good default. 40–60% for heavy compression. 85–95% for near-lossless.</div>
+    </div>
+    <div class="option-group">
+      <label class="option-label">Max width (optional)</label>
+      <select id="imgcompress-maxw">
+        <option value="0">Keep original dimensions</option>
+        <option value="1920">1920px — Full HD</option>
+        <option value="1280">1280px</option>
+        <option value="800">800px</option>
+        <option value="640">640px — thumbnail size</option>
+      </select>
+    </div>
+  </div>
+  <button class="btn-process" onclick="runImgCompress()">Compress Images</button>
+  <div class="status" id="imgcompress-status"></div>
+</div></div>
+
+<!-- IMG → PDF -->
+<div id="view-img2pdf" class="view"><div class="tool-view">
+  <button class="back-btn" onclick="goHome()">← Back</button>
+  <h2 class="tool-title">Image → PDF</h2>
+  <p class="tool-subtitle">Convert JPG and PNG images into a single PDF.</p>
+  <div class="dropzone" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event,'img2pdf')">
+    <input type="file" multiple accept="image/jpeg,image/jpg,image/png" onchange="handleFiles(event,'img2pdf')">
+    <div class="dropzone-icon">🖼️</div><div class="dropzone-text">Drop images here</div><div class="dropzone-sub">JPG and PNG — multiple files</div>
+  </div>
+  <div class="file-list" id="img2pdf-files"></div>
+  <div class="options">
+    <div class="option-group">
+      <label class="option-label">Page size</label>
+      <select id="img2pdf-size">
+        <option value="fit">Fit image (each image sets its own page size)</option>
+        <option value="a4">A4 (images scaled to fit)</option>
+      </select>
+    </div>
+  </div>
+  <button class="btn-process" onclick="runImg2Pdf()">Convert to PDF</button>
+  <div class="status" id="img2pdf-status"></div>
+</div></div>
+
+<!-- PDF → IMG -->
+<div id="view-pdf2img" class="view"><div class="tool-view">
+  <button class="back-btn" onclick="goHome()">← Back</button>
+  <h2 class="tool-title">PDF → Image</h2>
+  <p class="tool-subtitle">Render each PDF page as a PNG image file.</p>
+  <div class="dropzone" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event,'pdf2img')">
+    <input type="file" accept="application/pdf" onchange="handleFiles(event,'pdf2img')">
+    <div class="dropzone-icon">📸</div><div class="dropzone-text">Drop a PDF here</div><div class="dropzone-sub">or click to browse</div>
+  </div>
+  <div class="file-list" id="pdf2img-files"></div>
+  <div class="options">
+    <div class="option-group">
+      <label class="option-label">Output quality</label>
+      <select id="pdf2img-scale">
+        <option value="1.5">Standard (~150 DPI)</option>
+        <option value="2" selected>High (~200 DPI)</option>
+        <option value="3">Ultra (~300 DPI, slower)</option>
+      </select>
+    </div>
+  </div>
+  <button class="btn-process" onclick="runPdf2Img()">Export as Images</button>
+  <div class="status" id="pdf2img-status"></div>
+</div></div>
+
+<!-- WATERMARK -->
+<div id="view-watermark" class="view"><div class="tool-view">
+  <button class="back-btn" onclick="goHome()">← Back</button>
+  <h2 class="tool-title">Watermark PDF</h2>
+  <p class="tool-subtitle">Stamp diagonal text across every page.</p>
+  <div class="dropzone" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event,'watermark')">
+    <input type="file" accept="application/pdf" onchange="handleFiles(event,'watermark')">
+    <div class="dropzone-icon">💧</div><div class="dropzone-text">Drop a PDF here</div><div class="dropzone-sub">or click to browse</div>
+  </div>
+  <div class="file-list" id="watermark-files"></div>
+  <div class="options">
+    <div class="option-group">
+      <label class="option-label">Watermark text</label>
+      <input type="text" id="watermark-text" placeholder="e.g. CONFIDENTIAL, DRAFT…">
+    </div>
+    <div class="option-group">
+      <label class="option-label">Opacity</label>
+      <select id="watermark-opacity">
+        <option value="0.08">Very light (8%)</option>
+        <option value="0.15" selected>Light (15%)</option>
+        <option value="0.30">Medium (30%)</option>
+        <option value="0.50">Heavy (50%)</option>
+      </select>
+    </div>
+  </div>
+  <button class="btn-process" onclick="runWatermark()">Add Watermark</button>
+  <div class="status" id="watermark-status"></div>
+</div></div>
+
+<!-- PROTECT -->
+<div id="view-protect" class="view"><div class="tool-view">
+  <button class="back-btn" onclick="goHome()">← Back</button>
+  <h2 class="tool-title">Protect PDF</h2>
+  <p class="tool-subtitle">Password-protect your PDF. Cannot be opened without the correct password.</p>
+  <div class="dropzone" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event,'protect')">
+    <input type="file" accept="application/pdf" onchange="handleFiles(event,'protect')">
+    <div class="dropzone-icon">🔐</div><div class="dropzone-text">Drop a PDF here</div><div class="dropzone-sub">or click to browse</div>
+  </div>
+  <div class="file-list" id="protect-files"></div>
+  <div class="options">
+    <div class="option-group">
+      <label class="option-label">Password</label>
+      <input type="password" id="protect-password" placeholder="Enter a password">
+    </div>
+    <div class="option-group">
+      <label class="option-label">Confirm password</label>
+      <input type="password" id="protect-confirm" placeholder="Re-enter password">
+    </div>
+  </div>
+  <button class="btn-process" onclick="runProtect()">Protect PDF</button>
+  <div class="status" id="protect-status"></div>
+</div></div>
+
+<!-- SIGN -->
+<div id="view-sign" class="view"><div class="tool-view">
+  <button class="back-btn" onclick="goHome()">← Back</button>
+  <h2 class="tool-title">Sign PDF</h2>
+  <p class="tool-subtitle">Draw your signature and embed it into the PDF.</p>
+  <div class="dropzone" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event,'sign')">
+    <input type="file" accept="application/pdf" onchange="handleFiles(event,'sign')">
+    <div class="dropzone-icon">✍️</div><div class="dropzone-text">Drop a PDF here</div><div class="dropzone-sub">or click to browse</div>
+  </div>
+  <div class="file-list" id="sign-files"></div>
+  <div class="options">
+    <div class="option-group">
+      <label class="option-label">Draw your signature</label>
+      <canvas id="sign-canvas" width="600" height="150"></canvas>
+      <div class="sign-controls"><button class="btn-secondary" onclick="clearSignature()">Clear</button></div>
+    </div>
+    <div class="option-group">
+      <label class="option-label">Place on page</label>
+      <select id="sign-page-select">
+        <option value="last">Last page</option>
+        <option value="first">First page</option>
+      </select>
+    </div>
+    <div class="option-group">
+      <label class="option-label">Position</label>
+      <select id="sign-position">
+        <option value="br">Bottom right</option>
+        <option value="bl">Bottom left</option>
+        <option value="tr">Top right</option>
+        <option value="tl">Top left</option>
+        <option value="c">Center</option>
+      </select>
+    </div>
+    <div class="option-group">
+      <label class="option-label">Signature width (points)</label>
+      <input type="number" id="sign-width" value="200" min="50" max="500">
+      <div class="option-hint">200pt ≈ 7cm on print.</div>
+    </div>
+  </div>
+  <button class="btn-process" onclick="runSign()">Sign PDF</button>
+  <div class="status" id="sign-status"></div>
+</div></div>
+
+<!-- REORDER -->
+<div id="view-reorder" class="view"><div class="tool-view">
+  <button class="back-btn" onclick="goHome()">← Back</button>
+  <h2 class="tool-title">Reorder Pages</h2>
+  <p class="tool-subtitle">Load a PDF — drag the thumbnails into the order you want.</p>
+  <div class="dropzone" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event,'reorder')">
+    <input type="file" accept="application/pdf" onchange="handleFiles(event,'reorder')">
+    <div class="dropzone-icon">🗂️</div><div class="dropzone-text">Drop a PDF here</div><div class="dropzone-sub">or click to browse</div>
+  </div>
+  <div class="file-list" id="reorder-files"></div>
+  <div class="thumbnails-grid" id="reorder-thumbs"></div>
+  <button class="btn-process" id="reorder-save-btn" onclick="runReorder()" style="display:none">Save Reordered PDF</button>
+  <div class="status" id="reorder-status"></div>
+</div></div>
+
+<script>
+'use strict';
+
+const FILES = {
+  merge:[],split:[],rotate:[],compress:[],
+  imgcompress:[],img2pdf:[],pdf2img:[],watermark:[],protect:[],sign:[],reorder:[]
+};
+const ROTATIONS = {};
+
+let pdfjs = null;
+document.addEventListener('DOMContentLoaded', () => {
+  pdfjs = window['pdfjs-dist/build/pdf'];
+  if (pdfjs) pdfjs.GlobalWorkerOptions.workerSrc =
+    'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  initSignCanvas();
+});
+
+function openTool(name) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById('view-'+name).classList.add('active');
+  window.scrollTo(0,0);
+}
+function goHome() {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById('view-home').classList.add('active');
+}
+function toggleSplitRange() {
+  document.getElementById('split-range-group').style.display =
+    document.getElementById('split-mode').value === 'range' ? 'block' : 'none';
+}
+
+function readAsArrayBuffer(file) {
+  return new Promise((res,rej) => {
+    const r = new FileReader();
+    r.onload  = e => res(e.target.result);
+    r.onerror = () => rej(new Error('Could not read: '+file.name));
+    r.readAsArrayBuffer(file);
+  });
+}
+function readAsDataURL(file) {
+  return new Promise((res,rej) => {
+    const r = new FileReader();
+    r.onload  = e => res(e.target.result);
+    r.onerror = () => rej(new Error('Could not read: '+file.name));
+    r.readAsDataURL(file);
+  });
+}
+function saveBlob(bytes, name, mime='application/pdf') {
+  const blob = new Blob([bytes],{type:mime});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href=url; a.download=name;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url),3000);
+}
+function fmtSize(b) {
+  if(b<1024) return b+' B';
+  if(b<1048576) return (b/1024).toFixed(1)+' KB';
+  return (b/1048576).toFixed(1)+' MB';
+}
+function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
+
+function setStatus(tool,type,msg){
+  const el=document.getElementById(tool+'-status');
+  if(!el) return;
+  el.className='status '+type;
+  el.textContent=msg;
+}
+
+function handleDragOver(e) { e.preventDefault(); e.currentTarget.classList.add('over'); }
+function handleDragLeave(e){ e.currentTarget.classList.remove('over'); }
+function handleDrop(e,tool){ e.preventDefault(); e.currentTarget.classList.remove('over'); ingestFiles(tool,Array.from(e.dataTransfer.files)); }
+function handleFiles(e,tool){ ingestFiles(tool,Array.from(e.target.files)); e.target.value=''; }
+
+function ingestFiles(tool,raw){
+  const imgTools  = ['img2pdf','imgcompress'];
+  const multiTools= ['merge','img2pdf','imgcompress'];
+  const isImg     = imgTools.includes(tool);
+  const isMulti   = multiTools.includes(tool);
+
+  const filtered = raw.filter(f => isImg
+    ? ['image/jpeg','image/jpg','image/png'].includes(f.type)
+    : f.type==='application/pdf');
+
+  if(!filtered.length){
+    setStatus(tool,'error', isImg ? 'Only JPG and PNG images accepted.' : 'Only PDF files accepted.');
+    return;
+  }
+  FILES[tool] = isMulti ? [...FILES[tool],...filtered] : [filtered[0]];
+  renderFileList(tool);
+  if(tool==='reorder') loadReorderThumbnails(filtered[0]);
+  if(tool==='rotate')  loadRotateThumbnails(filtered[0]);
+}
+
+function removeFile(tool,idx){
+  FILES[tool].splice(idx,1);
+  renderFileList(tool);
+  if(tool==='reorder'){ document.getElementById('reorder-thumbs').innerHTML=''; document.getElementById('reorder-save-btn').style.display='none'; }
+  if(tool==='rotate'){
+    document.getElementById('rotate-thumbs').innerHTML='';
+    document.getElementById('rotate-save-btn').style.display='none';
+    document.getElementById('rotate-quick').style.display='none';
+    Object.keys(ROTATIONS).forEach(k=>delete ROTATIONS[k]);
+  }
+}
+function renderFileList(tool){
+  const wrap=document.getElementById(tool+'-files');
+  if(!wrap) return;
+  wrap.innerHTML='';
+  FILES[tool].forEach((f,i)=>{
+    const d=document.createElement('div'); d.className='file-item';
+    d.innerHTML=`<span class="file-item-icon">📄</span>
+      <span class="file-item-name" title="${f.name}">${f.name}</span>
+      <span class="file-item-size">${fmtSize(f.size)}</span>
+      <button class="file-item-remove" onclick="removeFile('${tool}',${i})">✕</button>`;
+    wrap.appendChild(d);
+  });
+}
+
+async function loadPdf(file){
+  const bytes=await readAsArrayBuffer(file);
+  try{ return await PDFLib.PDFDocument.load(bytes); }
+  catch(e){ throw new Error(`Cannot load "${file.name}" — may be corrupted or already encrypted.`); }
+}
+
+/* ─── MERGE ─── */
+async function runMerge(){
+  if(FILES.merge.length<2){ setStatus('merge','error','Add at least 2 PDFs.'); return; }
+  setStatus('merge','loading',`Merging ${FILES.merge.length} files…`);
+  try{
+    const merged=await PDFLib.PDFDocument.create();
+    for(const f of FILES.merge){
+      const src=await loadPdf(f);
+      const pages=await merged.copyPages(src,src.getPageIndices());
+      pages.forEach(p=>merged.addPage(p));
+    }
+    const out=await merged.save();
+    saveBlob(out,'zerova_merged.pdf');
+    setStatus('merge','success',`✓ Merged — ${fmtSize(out.length)}`);
+  }catch(e){ setStatus('merge','error',e.message); }
+}
+
+/* ─── SPLIT ─── */
+async function runSplit(){
+  if(!FILES.split.length){ setStatus('split','error','Add a PDF first.'); return; }
+  setStatus('split','loading','Splitting…');
+  try{
+    const src=await loadPdf(FILES.split[0]);
+    const total=src.getPageCount();
+    const mode=document.getElementById('split-mode').value;
+    let ranges=[];
+    if(mode==='all'){
+      ranges=Array.from({length:total},(_,i)=>[i]);
+    } else {
+      const raw=document.getElementById('split-ranges').value.trim();
+      if(!raw){ setStatus('split','error','Enter page ranges first.'); return; }
+      for(const part of raw.split(',')){
+        const t=part.trim();
+        if(t.includes('-')){
+          const [a,b]=t.split('-').map(n=>parseInt(n.trim())-1);
+          if(isNaN(a)||isNaN(b)||a<0||b>=total||a>b){ setStatus('split','error',`Invalid range "${t}".`); return; }
+          ranges.push(Array.from({length:b-a+1},(_,i)=>a+i));
+        } else {
+          const p=parseInt(t)-1;
+          if(isNaN(p)||p<0||p>=total){ setStatus('split','error',`Invalid page "${t}".`); return; }
+          ranges.push([p]);
+        }
+      }
+    }
+    for(let i=0;i<ranges.length;i++){
+      const doc=await PDFLib.PDFDocument.create();
+      const pgs=await doc.copyPages(src,ranges[i]);
+      pgs.forEach(p=>doc.addPage(p));
+      const out=await doc.save();
+      saveBlob(out, mode==='all' ? `zerova_page_${ranges[i][0]+1}.pdf` : `zerova_split_${i+1}.pdf`);
+      if(i<ranges.length-1) await sleep(280);
+    }
+    setStatus('split','success',`✓ Saved ${ranges.length} file(s)`);
+  }catch(e){ setStatus('split','error',e.message); }
+}
+
+/* ─── ROTATE (interactive) ─── */
+async function loadRotateThumbnails(file){
+  if(!pdfjs){ setStatus('rotate','error','Renderer not ready — try again.'); return; }
+  setStatus('rotate','loading','Generating thumbnails…');
+  const grid=document.getElementById('rotate-thumbs');
+  grid.innerHTML='';
+  document.getElementById('rotate-save-btn').style.display='none';
+  document.getElementById('rotate-quick').style.display='none';
+  Object.keys(ROTATIONS).forEach(k=>delete ROTATIONS[k]);
+  try{
+    const bytes=new Uint8Array(await readAsArrayBuffer(file));
+    const pdfdoc=await pdfjs.getDocument({data:bytes}).promise;
+    const n=pdfdoc.numPages;
+    for(let i=1;i<=n;i++){
+      const page=await pdfdoc.getPage(i);
+      const viewport=page.getViewport({scale:0.3});
+      const canvas=document.createElement('canvas');
+      canvas.width=Math.floor(viewport.width);
+      canvas.height=Math.floor(viewport.height);
+      await page.render({canvasContext:canvas.getContext('2d'),viewport}).promise;
+      ROTATIONS[i-1]=0;
+
+      const item=document.createElement('div'); item.className='rot-item'; item.dataset.idx=String(i-1);
+      const wrap=document.createElement('div'); wrap.className='rot-canvas-wrap';
+      wrap.appendChild(canvas);
+      const ctrl=document.createElement('div'); ctrl.className='rot-controls';
+      const bL=document.createElement('button'); bL.className='rot-btn'; bL.textContent='↺'; bL.title='−90°';
+      bL.onclick=()=>rotateThumb(item,canvas,i-1,-90);
+      const bR=document.createElement('button'); bR.className='rot-btn'; bR.textContent='↻'; bR.title='+90°';
+      bR.onclick=()=>rotateThumb(item,canvas,i-1,90);
+      ctrl.appendChild(bL); ctrl.appendChild(bR);
+      const lbl=document.createElement('div'); lbl.className='rot-label'; lbl.id=`rot-lbl-${i-1}`; lbl.textContent=`p.${i}`;
+      item.appendChild(wrap); item.appendChild(ctrl); item.appendChild(lbl);
+      grid.appendChild(item);
+    }
+    document.getElementById('rotate-save-btn').style.display='block';
+    document.getElementById('rotate-quick').style.display='flex';
+    setStatus('rotate','success',`✓ ${n} pages loaded — click ↺ ↻ to rotate`);
+  }catch(e){ setStatus('rotate','error',e.message); }
+}
+function rotateThumb(item,canvas,idx,delta){
+  ROTATIONS[idx]=((ROTATIONS[idx]||0)+delta+360)%360;
+  canvas.style.transform=`rotate(${ROTATIONS[idx]}deg)`;
+  const lbl=document.getElementById(`rot-lbl-${idx}`);
+  if(lbl) lbl.textContent = ROTATIONS[idx]===0 ? `p.${idx+1}` : `p.${idx+1} · ${ROTATIONS[idx]}°`;
+}
+function rotateAll(angle){
+  document.querySelectorAll('.rot-item').forEach(item=>{
+    const idx=parseInt(item.dataset.idx);
+    const canvas=item.querySelector('canvas');
+    ROTATIONS[idx]=angle;
+    canvas.style.transform=`rotate(${angle}deg)`;
+    const lbl=document.getElementById(`rot-lbl-${idx}`);
+    if(lbl) lbl.textContent = angle===0 ? `p.${idx+1}` : `p.${idx+1} · ${angle}°`;
+  });
+}
+async function runRotate(){
+  if(!FILES.rotate.length){ setStatus('rotate','error','Load a PDF first.'); return; }
+  setStatus('rotate','loading','Saving…');
+  try{
+    const doc=await loadPdf(FILES.rotate[0]);
+    const pages=doc.getPages();
+    pages.forEach((page,i)=>{
+      const extra=ROTATIONS[i]||0;
+      if(extra!==0) page.setRotation(PDFLib.degrees((page.getRotation().angle+extra)%360));
+    });
+    const out=await doc.save();
+    saveBlob(out,'zerova_rotated.pdf');
+    setStatus('rotate','success','✓ Rotated PDF saved');
+  }catch(e){ setStatus('rotate','error',e.message); }
+}
+
+/* ─── COMPRESS PDF ─── */
+async function runCompress(){
+  if(!FILES.compress.length){ setStatus('compress','error','Add a PDF first.'); return; }
+  setStatus('compress','loading','Compressing…');
+  try{
+    const mode=document.getElementById('compress-mode').value;
+    const orig=await readAsArrayBuffer(FILES.compress[0]);
+    const doc=await PDFLib.PDFDocument.load(orig);
+    if(mode==='aggressive'){
+      doc.setTitle(''); doc.setAuthor(''); doc.setSubject(''); doc.setKeywords([]);
+      doc.setProducer('ZEROVA'); doc.setCreator('ZEROVA');
+    }
+    const out=await doc.save({ useObjectStreams: mode!=='light' });
+    const saved=orig.byteLength-out.length;
+    const pct=((saved/orig.byteLength)*100).toFixed(1);
+    saveBlob(out,'zerova_compressed.pdf');
+    setStatus('compress','success', saved>0
+      ? `✓ Reduced by ${pct}%  ·  ${fmtSize(orig.byteLength)} → ${fmtSize(out.length)}`
+      : `✓ Saved (${fmtSize(out.length)}) — was already well-optimised`);
+  }catch(e){ setStatus('compress','error',e.message); }
+}
+
+/* ─── COMPRESS IMAGE ─── */
+async function runImgCompress(){
+  if(!FILES.imgcompress.length){ setStatus('imgcompress','error','Add images first.'); return; }
+  const quality=parseInt(document.getElementById('imgcompress-quality').value)/100;
+  const maxW=parseInt(document.getElementById('imgcompress-maxw').value);
+  setStatus('imgcompress','loading',`Compressing ${FILES.imgcompress.length} image(s)…`);
+  let done=0;
+  try{
+    for(const file of FILES.imgcompress){
+      const dataUrl=await readAsDataURL(file);
+      await new Promise((resolve,reject)=>{
+        const img=new Image();
+        img.onload=()=>{
+          let w=img.naturalWidth, h=img.naturalHeight;
+          if(maxW>0 && w>maxW){ h=Math.round(h*maxW/w); w=maxW; }
+          const cv=document.createElement('canvas');
+          cv.width=w; cv.height=h;
+          cv.getContext('2d').drawImage(img,0,0,w,h);
+          cv.toBlob(blob=>{
+            if(!blob){ reject(new Error(`Failed: ${file.name}`)); return; }
+            const stem=file.name.replace(/\.[^.]+$/,'');
+            saveBlob(blob,`zerova_${stem}.jpg`,'image/jpeg');
+            done++;
+            if(done<FILES.imgcompress.length)
+              setStatus('imgcompress','loading',`Compressed ${done}/${FILES.imgcompress.length}…`);
+            setTimeout(resolve,300);
+          },'image/jpeg',quality);
+        };
+        img.onerror=()=>reject(new Error(`Cannot load: ${file.name}`));
+        img.src=dataUrl;
+      });
+    }
+    setStatus('imgcompress','success',`✓ Compressed ${done} image(s) at ${Math.round(quality*100)}% quality`);
+  }catch(e){ setStatus('imgcompress','error',e.message); }
+}
+
+/* ─── IMG → PDF ─── */
+async function runImg2Pdf(){
+  if(!FILES.img2pdf.length){ setStatus('img2pdf','error','Add images first.'); return; }
+  setStatus('img2pdf','loading',`Embedding ${FILES.img2pdf.length} image(s)…`);
+  try{
+    const doc=await PDFLib.PDFDocument.create();
+    const mode=document.getElementById('img2pdf-size').value;
+    const A4W=595.28, A4H=841.89;
+    for(const file of FILES.img2pdf){
+      const bytes=new Uint8Array(await readAsArrayBuffer(file));
+      let img;
+      if(file.type==='image/png'){ try{img=await doc.embedPng(bytes);}catch{img=await doc.embedJpg(bytes);} }
+      else                       { try{img=await doc.embedJpg(bytes);}catch{img=await doc.embedPng(bytes);} }
+      if(mode==='a4'){
+        const s=Math.min(A4W/img.width,A4H/img.height);
+        const w=img.width*s,h=img.height*s;
+        const pg=doc.addPage([A4W,A4H]);
+        pg.drawImage(img,{x:(A4W-w)/2,y:(A4H-h)/2,width:w,height:h});
+      } else {
+        const pg=doc.addPage([img.width,img.height]);
+        pg.drawImage(img,{x:0,y:0,width:img.width,height:img.height});
+      }
+    }
+    const out=await doc.save();
+    saveBlob(out,'zerova_images.pdf');
+    setStatus('img2pdf','success',`✓ Created PDF — ${fmtSize(out.length)}`);
+  }catch(e){ setStatus('img2pdf','error',e.message); }
+}
+
+/* ─── PDF → IMG ─── */
+async function runPdf2Img(){
+  if(!FILES.pdf2img.length){ setStatus('pdf2img','error','Add a PDF first.'); return; }
+  if(!pdfjs){ setStatus('pdf2img','error','Renderer not ready.'); return; }
+  const scale=parseFloat(document.getElementById('pdf2img-scale').value);
+  setStatus('pdf2img','loading','Loading PDF…');
+  try{
+    const bytes=new Uint8Array(await readAsArrayBuffer(FILES.pdf2img[0]));
+    const pdfdoc=await pdfjs.getDocument({data:bytes}).promise;
+    const n=pdfdoc.numPages;
+    for(let i=1;i<=n;i++){
+      setStatus('pdf2img','loading',`Rendering page ${i} of ${n}…`);
+      const page=await pdfdoc.getPage(i);
+      const viewport=page.getViewport({scale});
+      const canvas=document.createElement('canvas');
+      canvas.width=Math.floor(viewport.width); canvas.height=Math.floor(viewport.height);
+      await page.render({canvasContext:canvas.getContext('2d'),viewport}).promise;
+      await new Promise(res=>canvas.toBlob(blob=>{
+        if(blob) saveBlob(blob,`zerova_page_${i}.png`,'image/png');
+        setTimeout(res,350);
+      },'image/png'));
+    }
+    setStatus('pdf2img','success',`✓ Exported ${n} PNG file(s)`);
+  }catch(e){ setStatus('pdf2img','error',e.message); }
+}
+
+/* ─── WATERMARK ─── */
+async function runWatermark(){
+  if(!FILES.watermark.length){ setStatus('watermark','error','Add a PDF first.'); return; }
+  const text=document.getElementById('watermark-text').value.trim();
+  if(!text){ setStatus('watermark','error','Enter watermark text.'); return; }
+  const opacity=parseFloat(document.getElementById('watermark-opacity').value);
+  setStatus('watermark','loading','Adding watermark…');
+  try{
+    const doc=await loadPdf(FILES.watermark[0]);
+    const font=await doc.embedFont(PDFLib.StandardFonts.HelveticaBold);
+    const pages=doc.getPages();
+    for(const page of pages){
+      const {width,height}=page.getSize();
+      const fontSize=Math.max(20,Math.min(56,width/9));
+      const tw=font.widthOfTextAtSize(text,fontSize);
+      page.drawText(text,{
+        x:(width-tw*Math.cos(Math.PI/4)+height*Math.sin(Math.PI/4))/2-tw/2,
+        y:(height-tw*Math.sin(Math.PI/4))/2,
+        size:fontSize,font,color:PDFLib.rgb(0.4,0.4,0.4),opacity,rotate:PDFLib.degrees(45),
+      });
+    }
+    const out=await doc.save();
+    saveBlob(out,'zerova_watermarked.pdf');
+    setStatus('watermark','success',`✓ Watermarked ${pages.length} page(s)`);
+  }catch(e){ setStatus('watermark','error',e.message); }
+}
+
+/* ─── PROTECT (fixed permissions casing) ─── */
+async function runProtect(){
+  if(!FILES.protect.length){ setStatus('protect','error','Add a PDF first.'); return; }
+  const pw=document.getElementById('protect-password').value;
+  const cpw=document.getElementById('protect-confirm').value;
+  if(!pw){ setStatus('protect','error','Enter a password.'); return; }
+  if(pw!==cpw){ setStatus('protect','error','Passwords do not match.'); return; }
+  setStatus('protect','loading','Encrypting…');
+  try{
+    const doc=await loadPdf(FILES.protect[0]);
+    const out=await doc.save({
+      userPassword: pw,
+      ownerPassword: pw+'_ZRV',
+      permissions:{
+        printing: 'LowResolution',
+        modifying: false,
+        copying: false,
+        annotating: false,
+        fillingForms: true,
+        contentAccessibility: true,
+        documentAssembly: false,
+      },
+    });
+    saveBlob(out,'zerova_protected.pdf');
+    setStatus('protect','success','✓ PDF is now password-protected');
+  }catch(e){ setStatus('protect','error','Encryption failed: '+e.message); }
+}
+
+/* ─── SIGN ─── */
+let signCanvas,signCtx,signDrawing=false,signHasMark=false;
+function initSignCanvas(){
+  signCanvas=document.getElementById('sign-canvas');
+  if(!signCanvas) return;
+  signCtx=signCanvas.getContext('2d');
+  signCtx.strokeStyle='#111'; signCtx.lineWidth=2.2; signCtx.lineCap='round'; signCtx.lineJoin='round';
+  function pos(e){
+    const r=signCanvas.getBoundingClientRect();
+    const sx=signCanvas.width/r.width, sy=signCanvas.height/r.height;
+    const src=e.touches?e.touches[0]:e;
+    return{x:(src.clientX-r.left)*sx,y:(src.clientY-r.top)*sy};
+  }
+  const start=e=>{signDrawing=true;const p=pos(e);signCtx.beginPath();signCtx.moveTo(p.x,p.y);};
+  const move=e=>{if(!signDrawing)return;e.preventDefault();const p=pos(e);signCtx.lineTo(p.x,p.y);signCtx.stroke();signHasMark=true;};
+  const end=()=>{signDrawing=false;};
+  signCanvas.addEventListener('mousedown',start);
+  signCanvas.addEventListener('mousemove',move);
+  signCanvas.addEventListener('mouseup',end);
+  signCanvas.addEventListener('mouseleave',end);
+  signCanvas.addEventListener('touchstart',start,{passive:false});
+  signCanvas.addEventListener('touchmove',move,{passive:false});
+  signCanvas.addEventListener('touchend',end);
+}
+function clearSignature(){ if(signCtx){signCtx.clearRect(0,0,signCanvas.width,signCanvas.height);signHasMark=false;} }
+async function runSign(){
+  if(!FILES.sign.length){ setStatus('sign','error','Add a PDF first.'); return; }
+  if(!signHasMark){ setStatus('sign','error','Draw your signature first.'); return; }
+  setStatus('sign','loading','Embedding signature…');
+  try{
+    const doc=await loadPdf(FILES.sign[0]);
+    const pages=doc.getPages();
+    const pg=document.getElementById('sign-page-select').value;
+    const target=pg==='first'?pages[0]:pages[pages.length-1];
+    const{width,height}=target.getSize();
+    const sigW=parseInt(document.getElementById('sign-width').value)||200;
+    const sigH=sigW*(signCanvas.height/signCanvas.width);
+    const dataUrl=signCanvas.toDataURL('image/png');
+    const res=await fetch(dataUrl);
+    const pngBytes=new Uint8Array(await res.arrayBuffer());
+    const sigImg=await doc.embedPng(pngBytes);
+    const pos2=document.getElementById('sign-position').value;
+    const mg=24;
+    let x,y;
+    if(pos2==='br'){x=width-sigW-mg;y=mg;}
+    else if(pos2==='bl'){x=mg;y=mg;}
+    else if(pos2==='tr'){x=width-sigW-mg;y=height-sigH-mg;}
+    else if(pos2==='tl'){x=mg;y=height-sigH-mg;}
+    else{x=(width-sigW)/2;y=(height-sigH)/2;}
+    target.drawImage(sigImg,{x,y,width:sigW,height:sigH});
+    const out=await doc.save();
+    saveBlob(out,'zerova_signed.pdf');
+    setStatus('sign','success','✓ Signature embedded');
+  }catch(e){ setStatus('sign','error',e.message); }
+}
+
+/* ─── REORDER ─── */
+async function loadReorderThumbnails(file){
+  if(!pdfjs){ setStatus('reorder','error','Renderer not ready.'); return; }
+  setStatus('reorder','loading','Generating thumbnails…');
+  const grid=document.getElementById('reorder-thumbs');
+  grid.innerHTML='';
+  document.getElementById('reorder-save-btn').style.display='none';
+  try{
+    const bytes=new Uint8Array(await readAsArrayBuffer(file));
+    const pdfdoc=await pdfjs.getDocument({data:bytes}).promise;
+    const n=pdfdoc.numPages;
+    for(let i=1;i<=n;i++){
+      const page=await pdfdoc.getPage(i);
+      const viewport=page.getViewport({scale:0.28});
+      const canvas=document.createElement('canvas');
+      canvas.width=Math.floor(viewport.width); canvas.height=Math.floor(viewport.height);
+      await page.render({canvasContext:canvas.getContext('2d'),viewport}).promise;
+      const item=document.createElement('div'); item.className='thumb-item';
+      item.dataset.origIdx=String(i-1); item.draggable=true;
+      const lbl=document.createElement('div'); lbl.className='thumb-num'; lbl.textContent=String(i);
+      item.appendChild(canvas); item.appendChild(lbl);
+      grid.appendChild(item);
+      attachThumbDrag(item,grid);
+    }
+    document.getElementById('reorder-save-btn').style.display='block';
+    setStatus('reorder','success',`✓ ${n} pages — drag to reorder`);
+  }catch(e){ setStatus('reorder','error',e.message); }
+}
+function attachThumbDrag(item,grid){
+  item.addEventListener('dragstart',e=>{
+    e.dataTransfer.setData('text/plain',item.dataset.origIdx);
+    e.dataTransfer.effectAllowed='move';
+    setTimeout(()=>item.classList.add('dragging'),0);
+  });
+  item.addEventListener('dragend',()=>{
+    item.classList.remove('dragging');
+    grid.querySelectorAll('.thumb-item').forEach((el,pos)=>{ el.querySelector('.thumb-num').textContent=String(pos+1); });
+  });
+  item.addEventListener('dragover',e=>{e.preventDefault();e.dataTransfer.dropEffect='move';item.classList.add('drag-over');});
+  item.addEventListener('dragleave',()=>item.classList.remove('drag-over'));
+  item.addEventListener('drop',e=>{
+    e.preventDefault(); item.classList.remove('drag-over');
+    const fromEl=grid.querySelector(`[data-orig-idx="${e.dataTransfer.getData('text/plain')}"]`);
+    if(!fromEl||fromEl===item) return;
+    grid.insertBefore(fromEl,item);
+  });
+}
+async function runReorder(){
+  if(!FILES.reorder.length){ setStatus('reorder','error','Load a PDF first.'); return; }
+  setStatus('reorder','loading','Building reordered PDF…');
+  try{
+    const grid=document.getElementById('reorder-thumbs');
+    const order=Array.from(grid.querySelectorAll('.thumb-item')).map(el=>parseInt(el.dataset.origIdx));
+    const src=await loadPdf(FILES.reorder[0]);
+    const doc=await PDFLib.PDFDocument.create();
+    const pages=await doc.copyPages(src,order);
+    pages.forEach(p=>doc.addPage(p));
+    const out=await doc.save();
+    saveBlob(out,'zerova_reordered.pdf');
+    setStatus('reorder','success',`✓ Saved ${order.length} pages in new order`);
+  }catch(e){ setStatus('reorder','error',e.message); }
+}
+</script>
+</body>
+</html>
