@@ -377,29 +377,6 @@
   <div class="status" id="watermark-status"></div>
 </div></div>
 
-<!-- PROTECT -->
-<div id="view-protect" class="view"><div class="tool-view">
-  <button class="back-btn" onclick="goHome()">← Back</button>
-  <h2 class="tool-title">Protect PDF</h2>
-  <p class="tool-subtitle">Password-protect your PDF. Cannot be opened without the correct password.</p>
-  <div class="dropzone" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event,'protect')">
-    <input type="file" accept="application/pdf" onchange="handleFiles(event,'protect')">
-    <div class="dropzone-icon">🔐</div><div class="dropzone-text">Drop a PDF here</div><div class="dropzone-sub">or click to browse</div>
-  </div>
-  <div class="file-list" id="protect-files"></div>
-  <div class="options">
-    <div class="option-group">
-      <label class="option-label">Password</label>
-      <input type="password" id="protect-password" placeholder="Enter a password">
-    </div>
-    <div class="option-group">
-      <label class="option-label">Confirm password</label>
-      <input type="password" id="protect-confirm" placeholder="Re-enter password">
-    </div>
-  </div>
-  <button class="btn-process" onclick="runProtect()">Protect PDF</button>
-  <div class="status" id="protect-status"></div>
-</div></div>
 
 <!-- SIGN -->
 <div id="view-sign" class="view"><div class="tool-view">
