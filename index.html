@@ -376,12 +376,12 @@
 <div id="view-pdf2img" class="view"><div class="tool-view">
   <button class="back-btn" onclick="goHome()">← Back</button>
   <h2 class="tool-title">PDF → Image</h2>
-  <p class="tool-subtitle">Render each PDF page as a PNG image file. One PNG per page.</p>
+  <p class="tool-subtitle">Render each PDF page as a PNG image file. Add multiple PDFs — all pages from all files will be exported.</p>
   <div class="dropzone" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event,'pdf2img')">
-    <input type="file" accept="application/pdf" onchange="handleFiles(event,'pdf2img')">
+    <input type="file" multiple accept="application/pdf" onchange="handleFiles(event,'pdf2img')">
     <div class="dropzone-icon">📸</div>
-    <div class="dropzone-text">Drop a PDF here</div>
-    <div class="dropzone-sub">or click to browse</div>
+    <div class="dropzone-text">Drop PDF files here</div>
+    <div class="dropzone-sub">or click to browse — multiple files allowed</div>
   </div>
   <div class="file-list" id="pdf2img-files"></div>
   <div class="options">
@@ -598,7 +598,7 @@ function handleFiles(e, tool) {
 
 function ingestFiles(tool, raw) {
   const imgTools   = ['img2pdf', 'imgcompress'];
-  const multiTools = ['merge', 'img2pdf', 'imgcompress'];
+  const multiTools = ['merge', 'img2pdf', 'imgcompress', 'pdf2img'];
   const isImg  = imgTools.includes(tool);
   const isMulti = multiTools.includes(tool);
 
@@ -942,28 +942,39 @@ async function runImg2Pdf() {
 // 7. PDF → IMAGE
 // ═══════════════════════════════════════════════════════════════
 async function runPdf2Img() {
-  if (!FILES.pdf2img.length) { setStatus('pdf2img', 'error', 'Add a PDF first.'); return; }
-  if (!pdfjs) { setStatus('pdf2img', 'error', 'Renderer not ready — please wait a moment.'); return; }
-  const scale = parseFloat(document.getElementById('pdf2img-scale').value);
-  setStatus('pdf2img', 'loading', 'Loading PDF…');
+  if (!FILES.pdf2img.length) { setStatus('pdf2img', 'error', 'Add at least one PDF.'); return; }
+  if (!pdfjs) { setStatus('pdf2img', 'error', 'Renderer not ready — please wait.'); return; }
+  const scale     = parseFloat(document.getElementById('pdf2img-scale').value);
+  const multiFile = FILES.pdf2img.length > 1;
+  let totalExported = 0;
+  setStatus('pdf2img', 'loading', `Processing ${FILES.pdf2img.length} file(s)…`);
   try {
-    const bytes  = new Uint8Array(await readAsArrayBuffer(FILES.pdf2img[0]));
-    const pdfdoc = await pdfjs.getDocument({ data: bytes }).promise;
-    const n      = pdfdoc.numPages;
-    for (let i = 1; i <= n; i++) {
-      setStatus('pdf2img', 'loading', `Rendering page ${i} of ${n}…`);
-      const page     = await pdfdoc.getPage(i);
-      const viewport = page.getViewport({ scale });
-      const canvas   = document.createElement('canvas');
-      canvas.width   = Math.floor(viewport.width);
-      canvas.height  = Math.floor(viewport.height);
-      await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
-      await new Promise(res => canvas.toBlob(blob => {
-        if (blob) saveBlob(blob, `zerova_page_${i}.png`, 'image/png');
-        setTimeout(res, 350);
-      }, 'image/png'));
+    for (let f = 0; f < FILES.pdf2img.length; f++) {
+      const file   = FILES.pdf2img[f];
+      const stem   = file.name.replace(/\.pdf$/i, '');
+      const bytes  = new Uint8Array(await readAsArrayBuffer(file));
+      const pdfdoc = await pdfjs.getDocument({ data: bytes }).promise;
+      const n      = pdfdoc.numPages;
+      for (let i = 1; i <= n; i++) {
+        setStatus('pdf2img', 'loading',
+          multiFile
+            ? `File ${f + 1}/${FILES.pdf2img.length} — page ${i}/${n}…`
+            : `Rendering page ${i} of ${n}…`);
+        const page     = await pdfdoc.getPage(i);
+        const viewport = page.getViewport({ scale });
+        const canvas   = document.createElement('canvas');
+        canvas.width   = Math.floor(viewport.width);
+        canvas.height  = Math.floor(viewport.height);
+        await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+        const outName = n === 1 ? `${stem}.png` : `${stem}_p${i}.png`;
+        await new Promise(res => canvas.toBlob(blob => {
+          if (blob) saveBlob(blob, outName, 'image/png');
+          setTimeout(res, 350);
+        }, 'image/png'));
+        totalExported++;
+      }
     }
-    setStatus('pdf2img', 'success', `✓ Exported ${n} PNG image(s)`);
+    setStatus('pdf2img', 'success', `✓ Exported ${totalExported} PNG image(s) from ${FILES.pdf2img.length} file(s)`);
   } catch (e) { setStatus('pdf2img', 'error', e.message); }
 }
 
